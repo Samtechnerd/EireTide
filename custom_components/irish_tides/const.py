@@ -1,4 +1,4 @@
-"""Constants for the Irish Tides integration."""
+"""Constants for the EireTide integration."""
 from __future__ import annotations
 
 from datetime import timedelta

@@ -1,4 +1,4 @@
-"""Binary sensor platform for Irish Tides."""
+"""Binary sensor platform for EireTide."""
 from __future__ import annotations
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
@@ -15,7 +15,7 @@ from .coordinator import IrishTidesDataUpdateCoordinator
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up the Irish Tides binary sensor from a config entry."""
+    """Set up the EireTide binary sensor from a config entry."""
     coordinator: IrishTidesDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([IrishTidesRisingBinarySensor(coordinator, entry)])
 

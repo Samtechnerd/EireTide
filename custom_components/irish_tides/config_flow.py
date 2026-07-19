@@ -1,4 +1,4 @@
-"""Config flow for the Irish Tides integration."""
+"""Config flow for the EireTide integration."""
 from __future__ import annotations
 
 import logging
@@ -26,7 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class IrishTidesConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Irish Tides."""
+    """Handle a config flow for EireTide."""
 
     VERSION = 1
 
@@ -130,6 +130,6 @@ class IrishTidesConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def _async_create_entry(self, station_id: str) -> FlowResult:
         return self.async_create_entry(
-            title=f"Irish Tides - {station_id}",
+            title=f"EireTide - {station_id}",
             data={CONF_STATION_ID: station_id},
         )

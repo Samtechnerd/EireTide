@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Irish Tides",
+        "title": "EireTide",
         "description": "Choose the tide gauge station to track. Data comes from the Marine Institute's tide prediction service.",
         "data": {
           "station_id": "Station"

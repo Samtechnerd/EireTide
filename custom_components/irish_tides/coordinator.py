@@ -1,4 +1,4 @@
-"""Data update coordinator for the Irish Tides integration."""
+"""Data update coordinator for the EireTide integration."""
 from __future__ import annotations
 
 import logging

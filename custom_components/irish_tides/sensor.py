@@ -1,4 +1,4 @@
-"""Sensor platform for Irish Tides."""
+"""Sensor platform for EireTide."""
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -34,7 +34,7 @@ def _event_type(event: TideEvent) -> str | None:
 
 @dataclass(frozen=True, kw_only=True)
 class IrishTidesSensorDescription(SensorEntityDescription):
-    """Describes an Irish Tides sensor tied to one of the upcoming tide events."""
+    """Describes an EireTide sensor tied to one of the upcoming tide events."""
 
     event_index: int
     value_fn: Callable[[TideEvent], str | float | datetime | None]
@@ -89,7 +89,7 @@ SENSOR_DESCRIPTIONS: tuple[IrishTidesSensorDescription, ...] = (
 def _device_info(coordinator: IrishTidesDataUpdateCoordinator, entry: ConfigEntry) -> DeviceInfo:
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
-        name=f"Irish Tides - {coordinator.station_id}",
+        name=f"EireTide - {coordinator.station_id}",
         manufacturer="Marine Institute",
         model="Tide Prediction",
         configuration_url=(
@@ -101,7 +101,7 @@ def _device_info(coordinator: IrishTidesDataUpdateCoordinator, entry: ConfigEntr
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up Irish Tides sensors from a config entry."""
+    """Set up EireTide sensors from a config entry."""
     coordinator: IrishTidesDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     entities: list[SensorEntity] = [IrishTidesCurrentHeightSensor(coordinator, entry)]
     entities.extend(

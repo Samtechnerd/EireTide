@@ -67,7 +67,7 @@ attempt a conversion.
 
 1. In HACS, add this repository as a custom repository (category:
    Integration).
-2. Install "Irish Tides".
+2. Install "EireTide".
 3. Restart Home Assistant.
 
 ### Manual
@@ -79,7 +79,7 @@ attempt a conversion.
 ## Configuration
 
 1. Go to **Settings → Devices & Services → Add Integration** and search for
-   **Irish Tides**.
+   **EireTide**.
 2. Pick a station from the dropdown (Dublin Port is pre-selected if
    available). If the station list can't be loaded, you can type the
    station name manually.

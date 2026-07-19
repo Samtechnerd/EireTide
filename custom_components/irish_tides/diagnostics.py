@@ -1,4 +1,4 @@
-"""Diagnostics support for Irish Tides."""
+"""Diagnostics support for EireTide."""
 from __future__ import annotations
 
 from typing import Any
