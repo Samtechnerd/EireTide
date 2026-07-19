@@ -4,7 +4,7 @@
 
 A Home Assistant custom integration for Irish tide predictions, built on the
 [Marine Institute](https://www.marine.ie/)'s open tide prediction data.
-Works for any station in their network, and defaults to **Howth**.
+Works for any station in their network, and defaults to **Dublin Port**.
 
 ## What you get
 
@@ -61,9 +61,9 @@ Data is refreshed every 30 minutes.
 
 1. Go to **Settings → Devices & Services → Add Integration** and search for
    **Irish Tides**.
-2. Pick a station from the dropdown (Howth is pre-selected if available).
-   If the station list can't be loaded, you can type the station name
-   manually.
+2. Pick a station from the dropdown (Dublin Port is pre-selected if
+   available). If the station list can't be loaded, you can type the
+   station name manually.
 3. Repeat to add additional stations — each station is a separate config
    entry.
 

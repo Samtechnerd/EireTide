@@ -7,7 +7,7 @@ DOMAIN = "irish_tides"
 
 CONF_STATION_ID = "station_id"
 
-DEFAULT_STATION = "Howth"
+DEFAULT_STATION = "Dublin_Port"
 
 ERDDAP_BASE_URL = "https://erddap.marine.ie/erddap"
 DATASET_ID = "IMI_TidePrediction_HighLow"

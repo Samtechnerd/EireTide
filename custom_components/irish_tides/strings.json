@@ -10,7 +10,7 @@
       },
       "manual_station": {
         "title": "Enter station name",
-        "description": "The station list couldn't be loaded from the Marine Institute. Enter the exact station name, for example: Howth.",
+        "description": "The station list couldn't be loaded from the Marine Institute. Enter the exact station name, for example: Dublin_Port.",
         "data": {
           "station_id": "Station"
         }
