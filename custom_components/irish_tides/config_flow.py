@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigFlow
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -19,7 +20,7 @@ from homeassistant.helpers.selector import (
 from homeassistant.util import dt as dt_util
 
 from . import api
-from .const import CONF_STATION_ID, DEFAULT_STATION, DOMAIN
+from .const import CONF_STATION_ID, DEFAULT_STATION, DOMAIN, FALLBACK_STATIONS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,13 +43,23 @@ class IrishTidesConfigFlow(ConfigFlow, domain=DOMAIN):
         session = async_get_clientsession(self.hass)
         try:
             self._schema = await api.async_discover_schema(session)
+        except (api.ErddapError, aiohttp.ClientError) as err:
+            _LOGGER.warning(
+                "Could not reach the Marine Institute dataset, falling back to "
+                "manual station entry: %s",
+                err,
+            )
+            return
+
+        try:
             self._stations = await api.async_get_station_list(session, self._schema)
         except (api.ErddapError, aiohttp.ClientError) as err:
             _LOGGER.warning(
-                "Could not load the Marine Institute station list, falling back "
-                "to manual entry: %s",
+                "Could not load the live station list, falling back to the "
+                "built-in station list: %s",
                 err,
             )
+            self._stations = list(FALLBACK_STATIONS)
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """First step: pick a station from a dropdown, if we could load the list."""
@@ -67,10 +78,14 @@ class IrishTidesConfigFlow(ConfigFlow, domain=DOMAIN):
             (station for station in self._stations if station.lower() == DEFAULT_STATION.lower()),
             self._stations[0],
         )
+        options = [
+            SelectOptionDict(value=station, label=station.replace("_", " "))
+            for station in self._stations
+        ]
         data_schema = vol.Schema(
             {
                 vol.Required(CONF_STATION_ID, default=default_station): SelectSelector(
-                    SelectSelectorConfig(options=self._stations, mode=SelectSelectorMode.DROPDOWN)
+                    SelectSelectorConfig(options=options, mode=SelectSelectorMode.DROPDOWN)
                 )
             }
         )
@@ -105,7 +120,7 @@ class IrishTidesConfigFlow(ConfigFlow, domain=DOMAIN):
                 session, schema, station_id, now, now + timedelta(days=2)
             )
         except (api.ErddapError, aiohttp.ClientError) as err:
-            _LOGGER.debug("Validation request failed for station %s: %s", station_id, err)
+            _LOGGER.warning("Validation request failed for station %s: %s", station_id, err)
             return {"base": "cannot_connect"}
 
         if not events:

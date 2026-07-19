@@ -33,7 +33,7 @@ def _load_irish_tides_module(name: str):
     return module
 
 
-_load_irish_tides_module("const")
+const = _load_irish_tides_module("const")
 api = _load_irish_tides_module("api")
 
 
@@ -175,3 +175,9 @@ def test_pick_column_respects_exclude() -> None:
     columns = ["time", "tide_time_category"]
 
     assert api._pick_column(columns, "time", exclude=("categ",)) == "time"
+
+
+def test_fallback_stations_contains_default_station_and_no_duplicates() -> None:
+    assert const.DEFAULT_STATION in const.FALLBACK_STATIONS
+    assert len(const.FALLBACK_STATIONS) == len(set(const.FALLBACK_STATIONS))
+    assert all(station.strip() for station in const.FALLBACK_STATIONS)
