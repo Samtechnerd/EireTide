@@ -19,6 +19,13 @@ REQUEST_TIMEOUT = 20
 
 ATTRIBUTION = "Tide predictions provided by the Marine Institute, Ireland (erddap.marine.ie)"
 
+# All heights in this dataset are relative to OD Malin, Ireland's national
+# geodetic datum -- not the Chart Datum / Lowest Astronomical Tide most
+# consumer tide apps use, which is why the numbers can look very different
+# (OD Malin sits roughly at mid-tide, so it swings negative; Chart Datum is
+# pinned near the lowest tide ever recorded, so it's always positive).
+HEIGHT_DATUM = "OD Malin"
+
 # Used only when the live station-list query succeeds at reaching the dataset
 # schema but the distinct() station query itself fails. Captured from a live
 # query against IMI_TidePrediction_HighLow on 2026-07-19; the Marine

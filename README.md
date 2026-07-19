@@ -42,6 +42,25 @@ them, so it adapts automatically if the Marine Institute changes their schema.
 
 Data is refreshed every 30 minutes.
 
+### About the height numbers
+
+All heights are relative to **OD Malin**, Ireland's national geodetic datum
+— that's what the Marine Institute publishes, and it's what every height
+sensor and the `datum` attribute on them report. OD Malin sits roughly at
+mid-tide, so values swing positive *and* negative (a spring low might read
+around -2m, a spring high around +2m).
+
+This is different from the **Chart Datum** (≈ Lowest Astronomical Tide)
+numbers you'll see in apps like Windfinder or Tides Near Me, which is
+pinned near the lowest tide ever recorded at a station and so is always
+positive and reads noticeably larger. The two datums differ by a
+roughly constant offset per station (commonly ~2-2.5m around the Irish
+coast), so don't be surprised if this integration's heights look smaller,
+or negative, next to a consumer tide app's — the tide *times* (high/low,
+rising/falling) are unaffected either way. There's no reliable per-station
+OD-Malin-to-Chart-Datum offset in this dataset, so this integration doesn't
+attempt a conversion.
+
 ## Installation
 
 ### HACS (recommended)

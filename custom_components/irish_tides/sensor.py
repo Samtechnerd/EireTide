@@ -19,10 +19,11 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import TideEvent
-from .const import ATTRIBUTION, DOMAIN
+from .const import ATTRIBUTION, DOMAIN, HEIGHT_DATUM
 from .coordinator import IrishTidesDataUpdateCoordinator
 
 CURRENT_HEIGHT_REFRESH_INTERVAL = timedelta(minutes=5)
+HEIGHT_SENSOR_KEYS = {"next_tide_height", "following_tide_height"}
 
 
 def _event_type(event: TideEvent) -> str | None:
@@ -145,6 +146,10 @@ class IrishTidesCurrentHeightSensor(
     def native_value(self) -> float | None:
         return self.coordinator.current_height_m()
 
+    @property
+    def extra_state_attributes(self) -> dict[str, str]:
+        return {"datum": HEIGHT_DATUM}
+
 
 class IrishTidesSensor(CoordinatorEntity[IrishTidesDataUpdateCoordinator], SensorEntity):
     """A sensor reporting one field of an upcoming tide event."""
@@ -173,16 +178,20 @@ class IrishTidesSensor(CoordinatorEntity[IrishTidesDataUpdateCoordinator], Senso
         return self.entity_description.value_fn(events[index])
 
     @property
-    def extra_state_attributes(self) -> dict[str, list] | None:
-        if self.entity_description.key != "next_tide_time":
-            return None
-        return {
-            "upcoming_tides": [
-                {
-                    "time": event.time.isoformat(),
-                    "type": _event_type(event),
-                    "height_m": event.height_m,
-                }
-                for event in self.coordinator.get_next_events(count=10)
-            ]
-        }
+    def extra_state_attributes(self) -> dict[str, object] | None:
+        key = self.entity_description.key
+        if key == "next_tide_time":
+            return {
+                "datum": HEIGHT_DATUM,
+                "upcoming_tides": [
+                    {
+                        "time": event.time.isoformat(),
+                        "type": _event_type(event),
+                        "height_m": event.height_m,
+                    }
+                    for event in self.coordinator.get_next_events(count=10)
+                ],
+            }
+        if key in HEIGHT_SENSOR_KEYS:
+            return {"datum": HEIGHT_DATUM}
+        return None
