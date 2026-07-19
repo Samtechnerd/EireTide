@@ -77,8 +77,12 @@ async def _get_text(session: aiohttp.ClientSession, url: str) -> str:
 
 
 async def async_discover_schema(session: aiohttp.ClientSession) -> DatasetSchema:
-    """Discover the dataset's real column names from ERDDAP's info endpoint."""
-    url = f"{ERDDAP_BASE_URL}/info/{DATASET_ID}/index.csvp"
+    """Discover the dataset's real column names from ERDDAP's info endpoint.
+
+    Unlike tabledap, the info endpoint has no units row to strip, so it only
+    serves plain .csv (not .csvp).
+    """
+    url = f"{ERDDAP_BASE_URL}/info/{DATASET_ID}/index.csv"
     text = await _get_text(session, url)
 
     reader = csv.DictReader(io.StringIO(text))
