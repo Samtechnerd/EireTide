@@ -67,6 +67,16 @@ Data is refreshed every 30 minutes.
 3. Repeat to add additional stations — each station is a separate config
    entry.
 
+## Branding
+
+`custom_components/irish_tides/brand/` ships `icon.png` and `logo.png`.
+Home Assistant 2026.3+ serves brand images straight from an integration's
+own `brand/` folder (no submission to the separate `home-assistant/brands`
+repo needed), so the icon/logo show up in the integrations list, config
+flow, and device pages automatically — nothing else to configure. On older
+Home Assistant versions this folder is simply ignored and the integration
+falls back to the generic puzzle-piece icon.
+
 ## Notes
 
 - This integration is not affiliated with, or endorsed by, the Marine
