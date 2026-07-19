@@ -19,11 +19,36 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import TideEvent
-from .const import ATTRIBUTION, DOMAIN, HEIGHT_DATUM
+from .const import (
+    ATTRIBUTION,
+    ATTRIBUTION_HARMONIC,
+    CONF_DATUM_LABEL,
+    CONF_SOURCE,
+    DOMAIN,
+    HEIGHT_DATUM,
+    SOURCE_HARMONIC,
+)
 from .coordinator import IrishTidesDataUpdateCoordinator
+from .harmonic_coordinator import HarmonicTideCoordinator
+
+TideCoordinator = IrishTidesDataUpdateCoordinator | HarmonicTideCoordinator
 
 CURRENT_HEIGHT_REFRESH_INTERVAL = timedelta(minutes=5)
 HEIGHT_SENSOR_KEYS = {"next_tide_height", "following_tide_height"}
+
+
+def _is_harmonic(entry: ConfigEntry) -> bool:
+    return entry.data.get(CONF_SOURCE) == SOURCE_HARMONIC
+
+
+def _attribution_for(entry: ConfigEntry) -> str:
+    return ATTRIBUTION_HARMONIC if _is_harmonic(entry) else ATTRIBUTION
+
+
+def _datum_for(entry: ConfigEntry) -> str:
+    if _is_harmonic(entry):
+        return entry.data.get(CONF_DATUM_LABEL, HEIGHT_DATUM)
+    return HEIGHT_DATUM
 
 
 def _event_type(event: TideEvent) -> str | None:
@@ -86,7 +111,14 @@ SENSOR_DESCRIPTIONS: tuple[IrishTidesSensorDescription, ...] = (
 )
 
 
-def _device_info(coordinator: IrishTidesDataUpdateCoordinator, entry: ConfigEntry) -> DeviceInfo:
+def _device_info(coordinator: TideCoordinator, entry: ConfigEntry) -> DeviceInfo:
+    if _is_harmonic(entry):
+        return DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=f"EireTide - {coordinator.station_id}",
+            manufacturer="EireTide (local astronomical model)",
+            model="Harmonic Tide Prediction",
+        )
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
         name=f"EireTide - {coordinator.station_id}",
@@ -102,7 +134,7 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up EireTide sensors from a config entry."""
-    coordinator: IrishTidesDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: TideCoordinator = hass.data[DOMAIN][entry.entry_id]
     entities: list[SensorEntity] = [IrishTidesCurrentHeightSensor(coordinator, entry)]
     entities.extend(
         IrishTidesSensor(coordinator, entry, description) for description in SENSOR_DESCRIPTIONS
@@ -110,28 +142,28 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class IrishTidesCurrentHeightSensor(
-    CoordinatorEntity[IrishTidesDataUpdateCoordinator], SensorEntity
-):
+class IrishTidesCurrentHeightSensor(CoordinatorEntity[TideCoordinator], SensorEntity):
     """The estimated current tide height, interpolated between predicted highs and lows."""
 
     _attr_has_entity_name = True
-    _attr_attribution = ATTRIBUTION
     _attr_translation_key = "current_tide_height"
     _attr_native_unit_of_measurement = "m"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 2
     _attr_icon = "mdi:waves"
 
-    def __init__(self, coordinator: IrishTidesDataUpdateCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: TideCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_current_tide_height"
         self._attr_device_info = _device_info(coordinator, entry)
+        self._attr_attribution = _attribution_for(entry)
+        self._datum = _datum_for(entry)
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        # The coordinator only fetches new predictions every 30 minutes, but the
-        # interpolated height should keep moving between those refreshes.
+        # The coordinator only refreshes predictions every 30 minutes (or 6
+        # hours for the harmonic source), but the interpolated/computed
+        # height should keep moving between those refreshes.
         self.async_on_remove(
             async_track_time_interval(
                 self.hass, self._async_handle_tick, CURRENT_HEIGHT_REFRESH_INTERVAL
@@ -148,19 +180,18 @@ class IrishTidesCurrentHeightSensor(
 
     @property
     def extra_state_attributes(self) -> dict[str, str]:
-        return {"datum": HEIGHT_DATUM}
+        return {"datum": self._datum}
 
 
-class IrishTidesSensor(CoordinatorEntity[IrishTidesDataUpdateCoordinator], SensorEntity):
+class IrishTidesSensor(CoordinatorEntity[TideCoordinator], SensorEntity):
     """A sensor reporting one field of an upcoming tide event."""
 
     _attr_has_entity_name = True
-    _attr_attribution = ATTRIBUTION
     entity_description: IrishTidesSensorDescription
 
     def __init__(
         self,
-        coordinator: IrishTidesDataUpdateCoordinator,
+        coordinator: TideCoordinator,
         entry: ConfigEntry,
         description: IrishTidesSensorDescription,
     ) -> None:
@@ -168,6 +199,8 @@ class IrishTidesSensor(CoordinatorEntity[IrishTidesDataUpdateCoordinator], Senso
         self.entity_description = description
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
         self._attr_device_info = _device_info(coordinator, entry)
+        self._attr_attribution = _attribution_for(entry)
+        self._datum = _datum_for(entry)
 
     @property
     def native_value(self) -> str | float | datetime | None:
@@ -182,7 +215,7 @@ class IrishTidesSensor(CoordinatorEntity[IrishTidesDataUpdateCoordinator], Senso
         key = self.entity_description.key
         if key == "next_tide_time":
             return {
-                "datum": HEIGHT_DATUM,
+                "datum": self._datum,
                 "upcoming_tides": [
                     {
                         "time": event.time.isoformat(),
@@ -193,5 +226,5 @@ class IrishTidesSensor(CoordinatorEntity[IrishTidesDataUpdateCoordinator], Senso
                 ],
             }
         if key in HEIGHT_SENSOR_KEYS:
-            return {"datum": HEIGHT_DATUM}
+            return {"datum": self._datum}
         return None

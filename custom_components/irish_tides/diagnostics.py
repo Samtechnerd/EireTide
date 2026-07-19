@@ -8,13 +8,16 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 from .coordinator import IrishTidesDataUpdateCoordinator
+from .harmonic_coordinator import HarmonicTideCoordinator
 
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-    coordinator: IrishTidesDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: IrishTidesDataUpdateCoordinator | HarmonicTideCoordinator = hass.data[DOMAIN][
+        entry.entry_id
+    ]
     return {
         "station_id": coordinator.station_id,
         "last_update_success": coordinator.last_update_success,
