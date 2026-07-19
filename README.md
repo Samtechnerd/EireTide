@@ -1,3 +1,5 @@
+<p align="center"><img src="logo.png" alt="EireTide logo" width="300"></p>
+
 # EireTide
 
 A Home Assistant custom integration for Irish tide predictions, built on the
