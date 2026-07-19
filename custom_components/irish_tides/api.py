@@ -77,8 +77,12 @@ async def _get_text(session: aiohttp.ClientSession, url: str) -> str:
 
 
 async def async_discover_schema(session: aiohttp.ClientSession) -> DatasetSchema:
-    """Discover the dataset's real column names from ERDDAP's info endpoint."""
-    url = f"{ERDDAP_BASE_URL}/info/{DATASET_ID}/index.csvp"
+    """Discover the dataset's real column names from ERDDAP's info endpoint.
+
+    Unlike tabledap, the info endpoint has no units row to strip, so it only
+    serves plain .csv (not .csvp).
+    """
+    url = f"{ERDDAP_BASE_URL}/info/{DATASET_ID}/index.csv"
     text = await _get_text(session, url)
 
     reader = csv.DictReader(io.StringIO(text))
@@ -110,6 +114,20 @@ async def async_discover_schema(session: aiohttp.ClientSession) -> DatasetSchema
     )
 
 
+def _resolve_header(fieldnames: list[str], column: str) -> str | None:
+    """Match a discovered column name against an actual CSV header.
+
+    ERDDAP's .csvp tabledap responses fold a variable's units into its
+    header instead of using a separate units row, e.g. the "time" variable
+    comes back as the header "time (UTC)". Columns with no units (like
+    stationID) still come back unchanged, so both forms need handling.
+    """
+    for name in fieldnames:
+        if name == column or name.startswith(f"{column} ("):
+            return name
+    return None
+
+
 async def async_get_station_list(
     session: aiohttp.ClientSession, schema: DatasetSchema
 ) -> list[str]:
@@ -119,11 +137,14 @@ async def async_get_station_list(
     text = await _get_text(session, url)
 
     reader = csv.DictReader(io.StringIO(text))
-    stations = {
-        row[schema.station_column].strip()
-        for row in reader
-        if row.get(schema.station_column)
-    }
+    station_key = _resolve_header(reader.fieldnames or [], schema.station_column)
+    if station_key is None:
+        raise ErddapError(
+            f"Station column '{schema.station_column}' not found in response headers: "
+            f"{reader.fieldnames}"
+        )
+
+    stations = {row[station_key].strip() for row in reader if row.get(station_key)}
     return sorted(stations)
 
 
@@ -145,7 +166,10 @@ async def async_get_tide_events(
         f"&{schema.time_column}%3E={_iso(start)}"
         f"&{schema.time_column}%3C={_iso(end)}"
     )
-    url = f"{ERDDAP_BASE_URL}/tabledap/{DATASET_ID}.csvp?{query}"
+    # No variable list is given (we want every column), but ERDDAP still
+    # requires something before the first constraint's leading '&' -- an
+    # empty variable list satisfies that.
+    url = f"{ERDDAP_BASE_URL}/tabledap/{DATASET_ID}.csvp?&{query}"
     text = await _get_text(session, url)
     return parse_tide_events(text, schema)
 
@@ -153,11 +177,23 @@ async def async_get_tide_events(
 def parse_tide_events(text: str, schema: DatasetSchema) -> list[TideEvent]:
     """Parse an ERDDAP csvp response into a chronological list of tide events."""
     reader = csv.DictReader(io.StringIO(text))
+    fieldnames = reader.fieldnames or []
+    time_key = _resolve_header(fieldnames, schema.time_column)
+    height_key = _resolve_header(fieldnames, schema.height_column)
+    category_key = (
+        _resolve_header(fieldnames, schema.category_column) if schema.category_column else None
+    )
+
+    if time_key is None or height_key is None:
+        raise ErddapError(
+            f"Expected time/height columns not found in response headers: {fieldnames}"
+        )
+
     events: list[TideEvent] = []
 
     for row in reader:
-        raw_time = row.get(schema.time_column)
-        raw_height = row.get(schema.height_column)
+        raw_time = row.get(time_key)
+        raw_height = row.get(height_key)
         if not raw_time or raw_height in (None, ""):
             continue
 
@@ -174,7 +210,7 @@ def parse_tide_events(text: str, schema: DatasetSchema) -> list[TideEvent]:
         except ValueError:
             height = None
 
-        category_raw = row.get(schema.category_column) if schema.category_column else None
+        category_raw = row.get(category_key) if category_key else None
         events.append(
             TideEvent(
                 time=event_time,

@@ -1,4 +1,4 @@
-"""Constants for the Irish Tides integration."""
+"""Constants for the EireTide integration."""
 from __future__ import annotations
 
 from datetime import timedelta
@@ -7,7 +7,7 @@ DOMAIN = "irish_tides"
 
 CONF_STATION_ID = "station_id"
 
-DEFAULT_STATION = "Howth"
+DEFAULT_STATION = "Dublin_Port"
 
 ERDDAP_BASE_URL = "https://erddap.marine.ie/erddap"
 DATASET_ID = "IMI_TidePrediction_HighLow"
@@ -18,3 +18,56 @@ LOOKBACK_HOURS = 24
 REQUEST_TIMEOUT = 20
 
 ATTRIBUTION = "Tide predictions provided by the Marine Institute, Ireland (erddap.marine.ie)"
+
+# All heights in this dataset are relative to OD Malin, Ireland's national
+# geodetic datum -- not the Chart Datum / Lowest Astronomical Tide most
+# consumer tide apps use, which is why the numbers can look very different
+# (OD Malin sits roughly at mid-tide, so it swings negative; Chart Datum is
+# pinned near the lowest tide ever recorded, so it's always positive).
+HEIGHT_DATUM = "OD Malin"
+
+# Used only when the live station-list query succeeds at reaching the dataset
+# schema but the distinct() station query itself fails. Captured from a live
+# query against IMI_TidePrediction_HighLow on 2026-07-19; the Marine
+# Institute may add stations over time, so live discovery is always tried
+# first.
+FALLBACK_STATIONS: tuple[str, ...] = (
+    "Achill_Island",
+    "Aranmore",
+    "Arklow",
+    "Ballycotton",
+    "Ballyglass",
+    "Bray_Harbour",
+    "Buncranna",
+    "Carrigaholt",
+    "Castletownbere",
+    "Clare_Island",
+    "Crosshaven",
+    "Dingle",
+    "Dublin_Port",
+    "Dungarvan",
+    "Dunmore",
+    "Fenit",
+    "Galway",
+    "Howth",
+    "Inishmore",
+    "Killary_Harbour",
+    "Killybegs",
+    "Kilrush",
+    "Kinsale",
+    "Lahinch",
+    "Letterfrack",
+    "Malin_Head",
+    "Port_Oriel",
+    "Ringaskiddy",
+    "Roonagh",
+    "Rossaveel",
+    "Rosslare",
+    "Skerries",
+    "Sligo",
+    "Tom_Clarke_Bridge",
+    "Tory_Island",
+    "Union_Hall",
+    "Wexford",
+    "Wicklow",
+)

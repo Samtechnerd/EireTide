@@ -1,6 +1,6 @@
 {
   "domain": "irish_tides",
-  "name": "Irish Tides",
+  "name": "EireTide",
   "codeowners": ["@Samtechnerd"],
   "config_flow": true,
   "documentation": "https://github.com/Samtechnerd/EireTide",

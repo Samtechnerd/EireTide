@@ -1,4 +1,4 @@
-"""Sensor platform for Irish Tides."""
+"""Sensor platform for EireTide."""
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -19,10 +19,11 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import TideEvent
-from .const import ATTRIBUTION, DOMAIN
+from .const import ATTRIBUTION, DOMAIN, HEIGHT_DATUM
 from .coordinator import IrishTidesDataUpdateCoordinator
 
 CURRENT_HEIGHT_REFRESH_INTERVAL = timedelta(minutes=5)
+HEIGHT_SENSOR_KEYS = {"next_tide_height", "following_tide_height"}
 
 
 def _event_type(event: TideEvent) -> str | None:
@@ -33,7 +34,7 @@ def _event_type(event: TideEvent) -> str | None:
 
 @dataclass(frozen=True, kw_only=True)
 class IrishTidesSensorDescription(SensorEntityDescription):
-    """Describes an Irish Tides sensor tied to one of the upcoming tide events."""
+    """Describes an EireTide sensor tied to one of the upcoming tide events."""
 
     event_index: int
     value_fn: Callable[[TideEvent], str | float | datetime | None]
@@ -88,7 +89,7 @@ SENSOR_DESCRIPTIONS: tuple[IrishTidesSensorDescription, ...] = (
 def _device_info(coordinator: IrishTidesDataUpdateCoordinator, entry: ConfigEntry) -> DeviceInfo:
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
-        name=f"Irish Tides - {coordinator.station_id}",
+        name=f"EireTide - {coordinator.station_id}",
         manufacturer="Marine Institute",
         model="Tide Prediction",
         configuration_url=(
@@ -100,7 +101,7 @@ def _device_info(coordinator: IrishTidesDataUpdateCoordinator, entry: ConfigEntr
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up Irish Tides sensors from a config entry."""
+    """Set up EireTide sensors from a config entry."""
     coordinator: IrishTidesDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     entities: list[SensorEntity] = [IrishTidesCurrentHeightSensor(coordinator, entry)]
     entities.extend(
@@ -145,6 +146,10 @@ class IrishTidesCurrentHeightSensor(
     def native_value(self) -> float | None:
         return self.coordinator.current_height_m()
 
+    @property
+    def extra_state_attributes(self) -> dict[str, str]:
+        return {"datum": HEIGHT_DATUM}
+
 
 class IrishTidesSensor(CoordinatorEntity[IrishTidesDataUpdateCoordinator], SensorEntity):
     """A sensor reporting one field of an upcoming tide event."""
@@ -173,16 +178,20 @@ class IrishTidesSensor(CoordinatorEntity[IrishTidesDataUpdateCoordinator], Senso
         return self.entity_description.value_fn(events[index])
 
     @property
-    def extra_state_attributes(self) -> dict[str, list] | None:
-        if self.entity_description.key != "next_tide_time":
-            return None
-        return {
-            "upcoming_tides": [
-                {
-                    "time": event.time.isoformat(),
-                    "type": _event_type(event),
-                    "height_m": event.height_m,
-                }
-                for event in self.coordinator.get_next_events(count=10)
-            ]
-        }
+    def extra_state_attributes(self) -> dict[str, object] | None:
+        key = self.entity_description.key
+        if key == "next_tide_time":
+            return {
+                "datum": HEIGHT_DATUM,
+                "upcoming_tides": [
+                    {
+                        "time": event.time.isoformat(),
+                        "type": _event_type(event),
+                        "height_m": event.height_m,
+                    }
+                    for event in self.coordinator.get_next_events(count=10)
+                ],
+            }
+        if key in HEIGHT_SENSOR_KEYS:
+            return {"datum": HEIGHT_DATUM}
+        return None
