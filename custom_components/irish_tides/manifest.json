@@ -1,0 +1,12 @@
+{
+  "domain": "irish_tides",
+  "name": "Irish Tides",
+  "codeowners": ["@Samtechnerd"],
+  "config_flow": true,
+  "documentation": "https://github.com/Samtechnerd/EireTide",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/Samtechnerd/EireTide/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

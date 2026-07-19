@@ -1,0 +1,57 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Irish Tides",
+        "description": "Choose the tide gauge station to track. Data comes from the Marine Institute's tide prediction service.",
+        "data": {
+          "station_id": "Station"
+        }
+      },
+      "manual_station": {
+        "title": "Enter station name",
+        "description": "The station list couldn't be loaded from the Marine Institute. Enter the exact station name, for example: Howth.",
+        "data": {
+          "station_id": "Station"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the Marine Institute tide data service.",
+      "unknown_station": "No tide predictions were found for that station. Check the spelling and try again."
+    },
+    "abort": {
+      "already_configured": "This station is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_tide_height": {
+        "name": "Current tide height"
+      },
+      "next_tide_time": {
+        "name": "Next tide time"
+      },
+      "next_tide_type": {
+        "name": "Next tide type"
+      },
+      "next_tide_height": {
+        "name": "Next tide height"
+      },
+      "following_tide_time": {
+        "name": "Following tide time"
+      },
+      "following_tide_type": {
+        "name": "Following tide type"
+      },
+      "following_tide_height": {
+        "name": "Following tide height"
+      }
+    },
+    "binary_sensor": {
+      "tide_rising": {
+        "name": "Tide rising"
+      }
+    }
+  }
+}
