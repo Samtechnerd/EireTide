@@ -149,7 +149,10 @@ async def async_get_tide_events(
         f"&{schema.time_column}%3E={_iso(start)}"
         f"&{schema.time_column}%3C={_iso(end)}"
     )
-    url = f"{ERDDAP_BASE_URL}/tabledap/{DATASET_ID}.csvp?{query}"
+    # No variable list is given (we want every column), but ERDDAP still
+    # requires something before the first constraint's leading '&' -- an
+    # empty variable list satisfies that.
+    url = f"{ERDDAP_BASE_URL}/tabledap/{DATASET_ID}.csvp?&{query}"
     text = await _get_text(session, url)
     return parse_tide_events(text, schema)
 
