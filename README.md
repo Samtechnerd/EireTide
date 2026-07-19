@@ -10,6 +10,7 @@ Each configured station is added as a device with these entities:
 
 | Entity | Description |
 | --- | --- |
+| `sensor.*_current_tide_height` | The main entity — estimated tide height (metres) right now |
 | `sensor.*_next_tide_time` | Timestamp of the next high or low tide |
 | `sensor.*_next_tide_type` | `High` or `Low` |
 | `sensor.*_next_tide_height` | Predicted height (metres) of the next tide |
@@ -21,6 +22,13 @@ Each configured station is added as a device with these entities:
 The `sensor.*_next_tide_time` entity also exposes an `upcoming_tides`
 attribute listing the next 10 predicted tide events, for use in cards or
 automations.
+
+`sensor.*_current_tide_height` isn't a direct measurement — the Marine
+Institute dataset only publishes high/low predictions, not a continuous
+curve. The value is interpolated between the surrounding predicted high and
+low using a cosine curve, which is accurate to within a few centimetres for
+Ireland's semi-diurnal tides. It refreshes every 5 minutes so it moves
+smoothly between the half-hourly prediction fetches.
 
 ## Data source
 

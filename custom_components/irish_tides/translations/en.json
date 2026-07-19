@@ -26,6 +26,9 @@
   },
   "entity": {
     "sensor": {
+      "current_tide_height": {
+        "name": "Current tide height"
+      },
       "next_tide_time": {
         "name": "Next tide time"
       },

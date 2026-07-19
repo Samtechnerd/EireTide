@@ -3,22 +3,26 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
+    SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import TideEvent
 from .const import ATTRIBUTION, DOMAIN
 from .coordinator import IrishTidesDataUpdateCoordinator
+
+CURRENT_HEIGHT_REFRESH_INTERVAL = timedelta(minutes=5)
 
 
 def _event_type(event: TideEvent) -> str | None:
@@ -81,14 +85,65 @@ SENSOR_DESCRIPTIONS: tuple[IrishTidesSensorDescription, ...] = (
 )
 
 
+def _device_info(coordinator: IrishTidesDataUpdateCoordinator, entry: ConfigEntry) -> DeviceInfo:
+    return DeviceInfo(
+        identifiers={(DOMAIN, entry.entry_id)},
+        name=f"Irish Tides - {coordinator.station_id}",
+        manufacturer="Marine Institute",
+        model="Tide Prediction",
+        configuration_url=(
+            "https://www.marine.ie/site-area/data-services/marine-forecasts/tidal-predictions"
+        ),
+    )
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up Irish Tides sensors from a config entry."""
     coordinator: IrishTidesDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
+    entities: list[SensorEntity] = [IrishTidesCurrentHeightSensor(coordinator, entry)]
+    entities.extend(
         IrishTidesSensor(coordinator, entry, description) for description in SENSOR_DESCRIPTIONS
     )
+    async_add_entities(entities)
+
+
+class IrishTidesCurrentHeightSensor(
+    CoordinatorEntity[IrishTidesDataUpdateCoordinator], SensorEntity
+):
+    """The estimated current tide height, interpolated between predicted highs and lows."""
+
+    _attr_has_entity_name = True
+    _attr_attribution = ATTRIBUTION
+    _attr_translation_key = "current_tide_height"
+    _attr_native_unit_of_measurement = "m"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 2
+    _attr_icon = "mdi:waves"
+
+    def __init__(self, coordinator: IrishTidesDataUpdateCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_current_tide_height"
+        self._attr_device_info = _device_info(coordinator, entry)
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        # The coordinator only fetches new predictions every 30 minutes, but the
+        # interpolated height should keep moving between those refreshes.
+        self.async_on_remove(
+            async_track_time_interval(
+                self.hass, self._async_handle_tick, CURRENT_HEIGHT_REFRESH_INTERVAL
+            )
+        )
+
+    @callback
+    def _async_handle_tick(self, _now: datetime) -> None:
+        self.async_write_ha_state()
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.current_height_m()
 
 
 class IrishTidesSensor(CoordinatorEntity[IrishTidesDataUpdateCoordinator], SensorEntity):
@@ -107,15 +162,7 @@ class IrishTidesSensor(CoordinatorEntity[IrishTidesDataUpdateCoordinator], Senso
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name=f"Irish Tides - {coordinator.station_id}",
-            manufacturer="Marine Institute",
-            model="Tide Prediction",
-            configuration_url=(
-                "https://www.marine.ie/site-area/data-services/marine-forecasts/tidal-predictions"
-            ),
-        )
+        self._attr_device_info = _device_info(coordinator, entry)
 
     @property
     def native_value(self) -> str | float | datetime | None:

@@ -11,6 +11,8 @@ import types
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 
 def _load_irish_tides_module(name: str):
     """Load a module from custom_components/irish_tides/ without importing
@@ -107,6 +109,57 @@ def test_parse_tide_events_skips_rows_missing_time_or_height() -> None:
 
     assert len(events) == 1
     assert events[0].height_m == 4.0
+
+
+def _event(hour: int, minute: int, height: float) -> api.TideEvent:
+    return api.TideEvent(
+        time=datetime(2026, 7, 19, hour, minute, tzinfo=timezone.utc),
+        height_m=height,
+        is_high=None,
+        category_raw=None,
+    )
+
+
+def test_interpolated_height_at_the_endpoints_matches_the_events() -> None:
+    low = _event(8, 30, 1.1)
+    high = _event(14, 40, 4.0)
+
+    assert api.interpolated_height_m([low, high], low.time) == 1.1
+    assert api.interpolated_height_m([low, high], high.time) == 4.0
+
+
+def test_interpolated_height_at_the_midpoint_is_the_average() -> None:
+    low = _event(8, 0, 1.0)
+    high = _event(14, 0, 3.0)
+    midpoint = datetime(2026, 7, 19, 11, 0, tzinfo=timezone.utc)
+
+    height = api.interpolated_height_m([low, high], midpoint)
+
+    assert height == pytest.approx(2.0)
+
+
+def test_interpolated_height_rises_slowly_near_the_low() -> None:
+    # Cosine interpolation should ease in/out, so a quarter of the way
+    # through the rise should be well short of a quarter of the height gain.
+    low = _event(8, 0, 0.0)
+    high = _event(12, 0, 4.0)
+    quarter_time = datetime(2026, 7, 19, 9, 0, tzinfo=timezone.utc)
+
+    height = api.interpolated_height_m([low, high], quarter_time)
+
+    assert height is not None
+    assert height < 1.0
+
+
+def test_interpolated_height_returns_none_outside_the_known_range() -> None:
+    low = _event(8, 0, 1.0)
+    high = _event(14, 0, 3.0)
+
+    before = datetime(2026, 7, 19, 7, 0, tzinfo=timezone.utc)
+    after = datetime(2026, 7, 19, 15, 0, tzinfo=timezone.utc)
+
+    assert api.interpolated_height_m([low, high], before) is None
+    assert api.interpolated_height_m([low, high], after) is None
 
 
 def test_pick_column_matches_keyword_case_insensitively() -> None:

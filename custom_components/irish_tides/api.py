@@ -14,6 +14,7 @@ from __future__ import annotations
 import csv
 import io
 import logging
+import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from urllib.parse import quote
@@ -218,3 +219,49 @@ def _infer_missing_high_low(events: list[TideEvent]) -> None:
 
         if neighbour is not None:
             event.is_high = event.height_m > neighbour.height_m
+
+
+def interpolated_height_m(events: list[TideEvent], at: datetime) -> float | None:
+    """Estimate the tide height at `at` from the surrounding predicted events.
+
+    `events` must be sorted ascending by time (as returned by
+    `parse_tide_events`). The real tide curve between two consecutive highs
+    and lows is close to one half-cycle of a cosine, so that's used to
+    interpolate between the bracketing pair rather than a straight line.
+    This isn't a substitute for a full harmonic model, but it's accurate to
+    within a few centimetres for the semi-diurnal tides found around
+    Ireland, and needs no data beyond what's already fetched for the
+    high/low sensors.
+    """
+    previous_event: TideEvent | None = None
+    next_event: TideEvent | None = None
+    for event in events:
+        if event.height_m is None:
+            continue
+        if event.time <= at:
+            previous_event = event
+        else:
+            next_event = event
+            break
+
+    if next_event is None:
+        # `at` is at or after the last known event; only an exact match on
+        # that last event is something we can answer without extrapolating.
+        if previous_event is not None and previous_event.time == at:
+            return previous_event.height_m
+        return None
+
+    if previous_event is None:
+        return None
+
+    span = (next_event.time - previous_event.time).total_seconds()
+    if span <= 0:
+        return previous_event.height_m
+
+    progress = (at - previous_event.time).total_seconds() / span
+    progress = min(max(progress, 0.0), 1.0)
+    cosine_progress = (1 - math.cos(math.pi * progress)) / 2
+
+    start = previous_event.height_m
+    end = next_event.height_m
+    return start + (end - start) * cosine_progress

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import aiohttp
 
@@ -63,3 +63,9 @@ class IrishTidesDataUpdateCoordinator(DataUpdateCoordinator[list[api.TideEvent]]
             return []
         now = dt_util.utcnow()
         return [event for event in self.data if event.time > now][:count]
+
+    def current_height_m(self, at: datetime | None = None) -> float | None:
+        """Estimate the current tide height by interpolating between predictions."""
+        if not self.data:
+            return None
+        return api.interpolated_height_m(self.data, at or dt_util.utcnow())
