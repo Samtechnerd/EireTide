@@ -84,6 +84,33 @@ def test_parse_tide_events_infers_high_low_without_category() -> None:
     assert [event.is_high for event in events] == [True, False, True, False]
 
 
+def test_parse_tide_events_handles_erddap_units_suffixed_headers() -> None:
+    # ERDDAP's tabledap .csvp responses fold units into the header itself
+    # (e.g. "time" -> "time (UTC)") instead of using a separate units row.
+    # This is the real response shape confirmed live against
+    # erddap.marine.ie for the Howth station.
+    schema = api.DatasetSchema(
+        station_column="stationID",
+        time_column="time",
+        height_column="Water_Level_ODMalin",
+        category_column="tide_time_category",
+    )
+    csv_text = (
+        "stationID,time (UTC),longitude (degrees_east),latitude (degrees_north),"
+        "tide_time_category,Water_Level_ODMalin (metres)\n"
+        "Howth,2026-07-18T19:55:00Z,-6.0683,53.39148,LOW,-1.803\n"
+        "Howth,2026-07-19T02:40:00Z,-6.0683,53.39148,HIGH,1.858\n"
+    )
+
+    events = api.parse_tide_events(csv_text, schema)
+
+    assert len(events) == 2
+    assert events[0].time == datetime(2026, 7, 18, 19, 55, tzinfo=timezone.utc)
+    assert events[0].height_m == -1.803
+    assert events[0].is_high is False
+    assert events[1].is_high is True
+
+
 def test_parse_tide_events_sorts_out_of_order_rows() -> None:
     csv_text = (
         "stationID,time,tide_height\n"
@@ -160,6 +187,24 @@ def test_interpolated_height_returns_none_outside_the_known_range() -> None:
 
     assert api.interpolated_height_m([low, high], before) is None
     assert api.interpolated_height_m([low, high], after) is None
+
+
+def test_resolve_header_matches_exact_or_units_suffixed_name() -> None:
+    fieldnames = ["stationID", "time (UTC)", "Water_Level_ODMalin (metres)", "tide_time_category"]
+
+    assert api._resolve_header(fieldnames, "stationID") == "stationID"
+    assert api._resolve_header(fieldnames, "time") == "time (UTC)"
+    assert api._resolve_header(fieldnames, "Water_Level_ODMalin") == "Water_Level_ODMalin (metres)"
+    assert api._resolve_header(fieldnames, "tide_time_category") == "tide_time_category"
+    assert api._resolve_header(fieldnames, "nonexistent") is None
+
+
+def test_resolve_header_does_not_match_unrelated_prefix() -> None:
+    # "time" must not match "timezone (whatever)" -- only an exact name or
+    # "<name> (" should count.
+    fieldnames = ["timezone (whatever)"]
+
+    assert api._resolve_header(fieldnames, "time") is None
 
 
 def test_pick_column_matches_keyword_case_insensitively() -> None:
