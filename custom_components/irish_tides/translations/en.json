@@ -3,6 +3,14 @@
     "step": {
       "user": {
         "title": "EireTide",
+        "description": "Choose where tide predictions come from.",
+        "menu_options": {
+          "marine_institute": "Marine Institute (Ireland tide stations)",
+          "harmonic": "Local harmonic model (Moon/Sun position, any station)"
+        }
+      },
+      "marine_institute": {
+        "title": "Marine Institute station",
         "description": "Choose the tide gauge station to track. Data comes from the Marine Institute's tide prediction service.",
         "data": {
           "station_id": "Station"
@@ -14,11 +22,22 @@
         "data": {
           "station_id": "Station"
         }
+      },
+      "harmonic": {
+        "title": "Local harmonic model",
+        "description": "Predicts tides locally from Moon/Sun position using a harmonic constituent model -- no network access needed. Works for any station, Ireland or UK, that you have harmonic constants for (see the README for where to source real ones). Enter one constituent per line as 'NAME AMPLITUDE_M PHASE_DEG', e.g. 'M2 1.90 137'.",
+        "data": {
+          "label": "Station name",
+          "mean_level_m": "Mean sea level / Z0 (metres)",
+          "datum_label": "Datum (for your own reference, e.g. \"Chart Datum\")",
+          "constituents": "Harmonic constituents"
+        }
       }
     },
     "error": {
       "cannot_connect": "Could not connect to the Marine Institute tide data service.",
-      "unknown_station": "No tide predictions were found for that station. Check the spelling and try again."
+      "unknown_station": "No tide predictions were found for that station. Check the spelling and try again.",
+      "invalid_constituents": "Could not parse the harmonic constituents. Check the format: one 'NAME AMPLITUDE PHASE' per line, e.g. 'M2 1.90 137'."
     },
     "abort": {
       "already_configured": "This station is already configured."

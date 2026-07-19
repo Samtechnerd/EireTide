@@ -19,6 +19,44 @@ REQUEST_TIMEOUT = 20
 
 ATTRIBUTION = "Tide predictions provided by the Marine Institute, Ireland (erddap.marine.ie)"
 
+# --- Prediction source selection -------------------------------------------
+# EireTide can either fetch predictions from the Marine Institute (Ireland
+# only), or compute them locally from Moon/Sun position using a harmonic
+# tide model with per-station constants supplied by the user (works for any
+# station, Ireland or UK, that the user has harmonic constants for).
+CONF_SOURCE = "source"
+SOURCE_MARINE_INSTITUTE = "marine_institute"
+SOURCE_HARMONIC = "harmonic"
+
+# --- Harmonic (local astronomical model) source -----------------------------
+CONF_LABEL = "label"
+CONF_MEAN_LEVEL = "mean_level_m"
+CONF_CONSTITUENTS = "constituents"
+CONF_DATUM_LABEL = "datum_label"
+
+DEFAULT_DATUM_LABEL = "As referenced by the supplied harmonic constants"
+
+# Predictions are computed instantly on demand, so this only controls how
+# often the cached high/low event list is regenerated to slide the forecast
+# window forward -- not how fresh the underlying data is.
+HARMONIC_SCAN_INTERVAL = timedelta(hours=6)
+HARMONIC_FORECAST_DAYS = 7
+HARMONIC_LOOKBACK_HOURS = 24
+
+ATTRIBUTION_HARMONIC = (
+    "Predicted locally from Moon/Sun position using a harmonic tide model "
+    "and user-supplied station constants -- not official measurements or "
+    "predictions"
+)
+
+# Example shown as the default value of the constituents text box in the
+# config flow. Deliberately not presented as accurate for any real station
+# -- see the "Local harmonic model" section of the README for where to
+# source real per-station constants.
+EXAMPLE_CONSTITUENTS_TEXT = (
+    "M2 1.90 137\nS2 0.70 171\nN2 0.40 120\nK1 0.10 200\nO1 0.08 190"
+)
+
 # All heights in this dataset are relative to OD Malin, Ireland's national
 # geodetic datum -- not the Chart Datum / Lowest Astronomical Tide most
 # consumer tide apps use, which is why the numbers can look very different

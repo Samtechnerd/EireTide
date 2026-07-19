@@ -16,11 +16,28 @@ from homeassistant.helpers.selector import (
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
 )
 from homeassistant.util import dt as dt_util
 
-from . import api
-from .const import CONF_STATION_ID, DEFAULT_STATION, DOMAIN, FALLBACK_STATIONS
+from . import api, harmonic
+from .const import (
+    CONF_CONSTITUENTS,
+    CONF_DATUM_LABEL,
+    CONF_LABEL,
+    CONF_MEAN_LEVEL,
+    CONF_SOURCE,
+    CONF_STATION_ID,
+    DEFAULT_DATUM_LABEL,
+    DEFAULT_STATION,
+    DOMAIN,
+    EXAMPLE_CONSTITUENTS_TEXT,
+    FALLBACK_STATIONS,
+    SOURCE_HARMONIC,
+    SOURCE_MARINE_INSTITUTE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,7 +79,16 @@ class IrishTidesConfigFlow(ConfigFlow, domain=DOMAIN):
             self._stations = list(FALLBACK_STATIONS)
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """First step: pick a station from a dropdown, if we could load the list."""
+        """First step: choose where predictions come from."""
+        return self.async_show_menu(
+            step_id="user",
+            menu_options=["marine_institute", "harmonic"],
+        )
+
+    async def async_step_marine_institute(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Pick an Irish station from the Marine Institute, from a dropdown if possible."""
         await self._async_discover_stations()
 
         if not self._stations:
@@ -89,7 +115,9 @@ class IrishTidesConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
             }
         )
-        return self.async_show_form(step_id="user", data_schema=data_schema, errors=errors)
+        return self.async_show_form(
+            step_id="marine_institute", data_schema=data_schema, errors=errors
+        )
 
     async def async_step_manual_station(
         self, user_input: dict[str, Any] | None = None
@@ -131,5 +159,59 @@ class IrishTidesConfigFlow(ConfigFlow, domain=DOMAIN):
     def _async_create_entry(self, station_id: str) -> FlowResult:
         return self.async_create_entry(
             title=f"EireTide - {station_id}",
-            data={CONF_STATION_ID: station_id},
+            data={CONF_SOURCE: SOURCE_MARINE_INSTITUTE, CONF_STATION_ID: station_id},
+        )
+
+    async def async_step_harmonic(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Configure a station predicted locally from a harmonic constituent model.
+
+        Unlike the Marine Institute source, this needs no network access at
+        all: the user supplies their station's harmonic constants (amplitude
+        + Greenwich phase lag per tidal constituent, e.g. from the UK's
+        National Tidal and Sea Level Facility / BODC, Admiralty EasyTide, or
+        their own harmonic analysis of measured data), and EireTide computes
+        predictions from Moon/Sun position from that point on.
+        """
+        errors: dict[str, str] = {}
+        constituents: list[dict[str, Any]] = []
+
+        if user_input is not None:
+            label = user_input[CONF_LABEL].strip()
+            try:
+                parsed = harmonic.parse_constituents_text(user_input[CONF_CONSTITUENTS])
+            except ValueError as err:
+                errors["base"] = "invalid_constituents"
+                _LOGGER.debug("Could not parse harmonic constituents: %s", err)
+            else:
+                constituents = [
+                    {"name": c.name, "amplitude_m": c.amplitude_m, "phase_deg": c.phase_deg}
+                    for c in parsed
+                ]
+
+            if not errors:
+                await self.async_set_unique_id(f"{DOMAIN}_harmonic_{label.lower()}")
+                self._abort_if_unique_id_configured()
+                return self.async_create_entry(
+                    title=f"EireTide - {label}",
+                    data={
+                        CONF_SOURCE: SOURCE_HARMONIC,
+                        CONF_LABEL: label,
+                        CONF_MEAN_LEVEL: user_input[CONF_MEAN_LEVEL],
+                        CONF_DATUM_LABEL: user_input[CONF_DATUM_LABEL].strip(),
+                        CONF_CONSTITUENTS: constituents,
+                    },
+                )
+
+        data_schema = vol.Schema(
+            {
+                vol.Required(CONF_LABEL, default="My Station"): str,
+                vol.Required(CONF_MEAN_LEVEL, default=0.0): vol.Coerce(float),
+                vol.Required(CONF_DATUM_LABEL, default=DEFAULT_DATUM_LABEL): str,
+                vol.Required(
+                    CONF_CONSTITUENTS, default=EXAMPLE_CONSTITUENTS_TEXT
+                ): TextSelector(TextSelectorConfig(multiline=True, type=TextSelectorType.TEXT)),
+            }
+        )
+        return self.async_show_form(
+            step_id="harmonic", data_schema=data_schema, errors=errors
         )
