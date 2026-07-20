@@ -24,6 +24,17 @@
       "already_configured": "This station is already configured."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Chart Datum offset",
+        "description": "All heights from the Marine Institute are relative to OD Malin, not the Chart Datum most consumer tide apps use. If you know your station's OD-Malin-to-Chart-Datum offset, enter it here (in metres) to also get a chart_datum_estimate_m attribute on the height sensors. Leave at 0 to skip this.",
+        "data": {
+          "height_offset_m": "Chart Datum offset (m)"
+        }
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "current_tide_height": {

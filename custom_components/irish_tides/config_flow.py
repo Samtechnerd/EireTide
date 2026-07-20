@@ -8,10 +8,13 @@ from typing import Any
 import aiohttp
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -20,7 +23,15 @@ from homeassistant.helpers.selector import (
 from homeassistant.util import dt as dt_util
 
 from . import api
-from .const import CONF_STATION_ID, DEFAULT_STATION, DOMAIN, FALLBACK_STATIONS
+from .const import (
+    CONF_HEIGHT_OFFSET,
+    CONF_STATION_ID,
+    DEFAULT_HEIGHT_OFFSET,
+    DEFAULT_STATION,
+    DOMAIN,
+    FALLBACK_STATIONS,
+    KNOWN_HEIGHT_OFFSETS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +40,10 @@ class IrishTidesConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for EireTide."""
 
     VERSION = 1
+
+    @staticmethod
+    def async_get_options_flow(config_entry: ConfigEntry) -> IrishTidesOptionsFlow:
+        return IrishTidesOptionsFlow()
 
     def __init__(self) -> None:
         self._schema: api.DatasetSchema | None = None
@@ -133,3 +148,26 @@ class IrishTidesConfigFlow(ConfigFlow, domain=DOMAIN):
             title=f"EireTide - {station_id}",
             data={CONF_STATION_ID: station_id},
         )
+
+
+class IrishTidesOptionsFlow(OptionsFlow):
+    """Lets an already-configured station's Chart Datum offset be edited."""
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+
+        station_id = self.config_entry.data[CONF_STATION_ID]
+        current_offset = self.config_entry.options.get(
+            CONF_HEIGHT_OFFSET, KNOWN_HEIGHT_OFFSETS.get(station_id, DEFAULT_HEIGHT_OFFSET)
+        )
+        data_schema = vol.Schema(
+            {
+                vol.Optional(CONF_HEIGHT_OFFSET, default=current_offset): NumberSelector(
+                    NumberSelectorConfig(
+                        min=-10, max=10, step=0.001, mode=NumberSelectorMode.BOX, unit_of_measurement="m"
+                    )
+                )
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=data_schema)

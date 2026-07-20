@@ -57,9 +57,24 @@ positive and reads noticeably larger. The two datums differ by a
 roughly constant offset per station (commonly ~2-2.5m around the Irish
 coast), so don't be surprised if this integration's heights look smaller,
 or negative, next to a consumer tide app's — the tide *times* (high/low,
-rising/falling) are unaffected either way. There's no reliable per-station
-OD-Malin-to-Chart-Datum offset in this dataset, so this integration doesn't
-attempt a conversion.
+rising/falling) are unaffected either way.
+
+#### Chart Datum estimate (optional)
+
+Once a station is set up, open its **Configure** option (Settings →
+Devices & Services → EireTide → the station → Configure) to enter that
+station's OD-Malin-to-Chart-Datum offset in metres, if you know it. When
+set, every height sensor gains a `chart_datum_estimate_m` attribute
+(`native value + offset`) alongside the raw OD Malin reading — the raw
+value never changes, this is purely an added estimate.
+
+A handful of offsets, derived from simultaneous OD Malin / LAT readings on
+the Marine Institute's real-time observations network on 2026-07-20, are
+pre-filled automatically for stations we have data for (see
+`KNOWN_HEIGHT_OFFSETS` in `const.py`), including **Howth (2.561m)** and
+**Dublin Port (2.458m)**. Treat these as good estimates, not surveyed
+figures — for anything precision-critical, use your station's official
+Admiralty Tide Table datum correction instead.
 
 ## Installation
 

@@ -13,7 +13,15 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from . import api
-from .const import CONF_STATION_ID, DOMAIN, FORECAST_DAYS, LOOKBACK_HOURS, SCAN_INTERVAL
+from .const import (
+    CONF_HEIGHT_OFFSET,
+    CONF_STATION_ID,
+    DEFAULT_HEIGHT_OFFSET,
+    DOMAIN,
+    FORECAST_DAYS,
+    LOOKBACK_HOURS,
+    SCAN_INTERVAL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,3 +77,8 @@ class IrishTidesDataUpdateCoordinator(DataUpdateCoordinator[list[api.TideEvent]]
         if not self.data:
             return None
         return api.interpolated_height_m(self.data, at or dt_util.utcnow())
+
+    @property
+    def height_offset_m(self) -> float:
+        """User-supplied OD-Malin-to-Chart-Datum correction, if any (0 = none)."""
+        return self.entry.options.get(CONF_HEIGHT_OFFSET, DEFAULT_HEIGHT_OFFSET)

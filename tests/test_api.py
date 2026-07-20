@@ -226,3 +226,16 @@ def test_fallback_stations_contains_default_station_and_no_duplicates() -> None:
     assert const.DEFAULT_STATION in const.FALLBACK_STATIONS
     assert len(const.FALLBACK_STATIONS) == len(set(const.FALLBACK_STATIONS))
     assert all(station.strip() for station in const.FALLBACK_STATIONS)
+
+
+def test_known_height_offsets_are_sane_and_known_stations() -> None:
+    # Every known offset should map to a real fallback station, and be a
+    # small-ish positive number of metres (OD Malin -> Chart Datum around
+    # Ireland is roughly 1-3m; anything wildly outside that would indicate
+    # a data-entry mistake).
+    assert const.KNOWN_HEIGHT_OFFSETS
+    for station, offset in const.KNOWN_HEIGHT_OFFSETS.items():
+        assert station in const.FALLBACK_STATIONS
+        assert 0 < offset < 5
+
+    assert const.KNOWN_HEIGHT_OFFSETS["Howth"] == pytest.approx(2.561)

@@ -147,8 +147,13 @@ class IrishTidesCurrentHeightSensor(
         return self.coordinator.current_height_m()
 
     @property
-    def extra_state_attributes(self) -> dict[str, str]:
-        return {"datum": HEIGHT_DATUM}
+    def extra_state_attributes(self) -> dict[str, object]:
+        attributes: dict[str, object] = {"datum": HEIGHT_DATUM}
+        height = self.coordinator.current_height_m()
+        offset = self.coordinator.height_offset_m
+        if height is not None and offset:
+            attributes["chart_datum_estimate_m"] = round(height + offset, 3)
+        return attributes
 
 
 class IrishTidesSensor(CoordinatorEntity[IrishTidesDataUpdateCoordinator], SensorEntity):
@@ -180,6 +185,7 @@ class IrishTidesSensor(CoordinatorEntity[IrishTidesDataUpdateCoordinator], Senso
     @property
     def extra_state_attributes(self) -> dict[str, object] | None:
         key = self.entity_description.key
+        offset = self.coordinator.height_offset_m
         if key == "next_tide_time":
             return {
                 "datum": HEIGHT_DATUM,
@@ -188,10 +194,21 @@ class IrishTidesSensor(CoordinatorEntity[IrishTidesDataUpdateCoordinator], Senso
                         "time": event.time.isoformat(),
                         "type": _event_type(event),
                         "height_m": event.height_m,
+                        "chart_datum_estimate_m": (
+                            round(event.height_m + offset, 3)
+                            if event.height_m is not None and offset
+                            else None
+                        ),
                     }
                     for event in self.coordinator.get_next_events(count=10)
                 ],
             }
         if key in HEIGHT_SENSOR_KEYS:
-            return {"datum": HEIGHT_DATUM}
+            attributes: dict[str, object] = {"datum": HEIGHT_DATUM}
+            events = self.coordinator.get_next_events(count=2)
+            index = self.entity_description.event_index
+            height = events[index].height_m if index < len(events) else None
+            if height is not None and offset:
+                attributes["chart_datum_estimate_m"] = round(height + offset, 3)
+            return attributes
         return None
